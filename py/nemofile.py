@@ -2,12 +2,17 @@
 Module for reading and writing N-body snapshots in the NEMO binary format.
 The code for snapshot handling is hacked from AMUSE and reworked into a standalone module.
 """
-import sys, array, numpy
 
-__all__ = ['NemoFile']
+import array
+import sys
+
+import numpy
+
+__all__ = ["NemoFile"]
 
 # save the original built-in function for opening a file; the name will later be reassigned to a custom open function
 _builtins_open = open
+
 
 class OrderedMultiDictionary(object):
     """A dictionary that keeps the keys in the dictionary in order and can store
@@ -82,19 +87,21 @@ class OrderedMultiDictionary(object):
 # copied from 'six' module to avoid adding it as a dependency
 def add_metaclass(metaclass):
     """Class decorator for creating a class with a metaclass."""
+
     def wrapper(cls):
         orig_vars = cls.__dict__.copy()
-        slots = orig_vars.get('__slots__')
+        slots = orig_vars.get("__slots__")
         if slots is not None:
             if isinstance(slots, str):
                 slots = [slots]
             for slots_var in slots:
                 orig_vars.pop(slots_var)
-        orig_vars.pop('__dict__', None)
-        orig_vars.pop('__weakref__', None)
-        if hasattr(cls, '__qualname__'):
-            orig_vars['__qualname__'] = cls.__qualname__
+        orig_vars.pop("__dict__", None)
+        orig_vars.pop("__weakref__", None)
+        if hasattr(cls, "__qualname__"):
+            orig_vars["__qualname__"] = cls.__qualname__
         return metaclass(cls.__name__, cls.__bases__, orig_vars)
+
     return wrapper
 
 
@@ -102,12 +109,12 @@ class NemoItemType(type):
     mapping = {}
 
     def __new__(metaclass, name, bases, dict):
-        if 'datatype' in dict:
-            if not dict['datatype'] is None:
-                dict['datatype'] = numpy.dtype(dict['datatype'])
+        if "datatype" in dict:
+            if not dict["datatype"] is None:
+                dict["datatype"] = numpy.dtype(dict["datatype"])
         result = type.__new__(metaclass, name, bases, dict)
-        if 'typecharacter' in dict:
-            metaclass.mapping[dict['typecharacter']] = result
+        if "typecharacter" in dict:
+            metaclass.mapping[dict["typecharacter"]] = result
         return result
 
     @classmethod
@@ -117,10 +124,9 @@ class NemoItemType(type):
 
 @add_metaclass(NemoItemType)
 class NemoItem(object):
-
     def __init__(self, tagstring, dimensions=[1], data=None, mustswap=False):
         self.tagstring = tagstring
-        self.dimensions = dimensions 
+        self.dimensions = dimensions
         self.mustswap = mustswap
         self.data = data
 
@@ -157,37 +163,40 @@ class NemoItem(object):
         return False
 
     def __str__(self):
-        return 'nemoitem({0},{1})'.format(self.tagstring, self.dimensions)
+        return "nemoitem({0},{1})".format(self.tagstring, self.dimensions)
 
     def __repr__(self):
-        return '<{0!s} {1},{2}>'.format(type(self), self.tagstring, self.dimensions)
+        return "<{0!s} {1},{2}>".format(type(self), self.tagstring, self.dimensions)
 
 
 class AnyItem(NemoItem):
     """anything at all"""
+
     typecharacter = "a"
     datatype = numpy.byte
 
 
 class CharItem(NemoItem):
     """printable chars"""
+
     typecharacter = "c"
     datatype = "c"
 
     def postprocess(self):
         if sys.version_info.major == 2:
-            self.data = ''.join(self.data[:-1])
+            self.data = "".join(self.data[:-1])
         else:
-            self.data = self.data[:-1].tobytes().decode('latin_1')
+            self.data = self.data[:-1].tobytes().decode("latin_1")
 
     def preprocess(self):
         result = numpy.array(list(self.data), "c")
-        result = numpy.append(result, b'\x00')
+        result = numpy.append(result, b"\x00")
         return result
 
 
 class ByteItem(NemoItem):
     """unprintable chars"""
+
     typecharacter = "b"
     datatype = numpy.byte
 
@@ -196,7 +205,8 @@ class ByteItem(NemoItem):
 
 
 class ShortItem(NemoItem):
-    """  short integers """
+    """short integers"""
+
     typecharacter = "s"
     datatype = numpy.int16
 
@@ -205,7 +215,8 @@ class ShortItem(NemoItem):
 
 
 class IntItem(NemoItem):
-    """  standard integers """
+    """standard integers"""
+
     typecharacter = "i"
     datatype = numpy.int32
 
@@ -214,7 +225,8 @@ class IntItem(NemoItem):
 
 
 class LongItem(NemoItem):
-    """  long integers """
+    """long integers"""
+
     typecharacter = "l"
     datatype = numpy.int64
 
@@ -223,13 +235,15 @@ class LongItem(NemoItem):
 
 
 class HalfpItem(NemoItem):
-    """  half precision floating """
+    """half precision floating"""
+
     typecharacter = "h"
     datatype = numpy.float16
 
 
 class FloatItem(NemoItem):
-    """  short floating """
+    """short floating"""
+
     typecharacter = "f"
     datatype = numpy.float32
 
@@ -238,7 +252,8 @@ class FloatItem(NemoItem):
 
 
 class DoubleItem(NemoItem):
-    """  long floating """
+    """long floating"""
+
     typecharacter = "d"
     datatype = numpy.float64
 
@@ -247,7 +262,8 @@ class DoubleItem(NemoItem):
 
 
 class SetItem(NemoItem):
-    """  begin compound item """
+    """begin compound item"""
+
     typecharacter = "("
     datatype = None
 
@@ -273,7 +289,8 @@ class SetItem(NemoItem):
 
 
 class TesItem(NemoItem):
-    """  end of compound item """
+    """end of compound item"""
+
     typecharacter = ")"
     datatype = None
 
@@ -285,7 +302,8 @@ class TesItem(NemoItem):
 
 
 class StoryItem(NemoItem):
-    """  begin of a story item (see starlab) """
+    """begin of a story item (see starlab)"""
+
     typecharacter = "["
     datatype = None
 
@@ -295,7 +313,7 @@ class StoryItem(NemoItem):
         while not subitem.isEndOfHistory():
             self.data[subitem.tagstring] = subitem
             subitem = nemofile.read_item()
-        print('read story: %s' % self.data)
+        print("read story: %s" % self.data)
 
     def write(self, nemofile):
         for x in self.data.values():
@@ -304,7 +322,8 @@ class StoryItem(NemoItem):
 
 
 class YrotsItem(NemoItem):
-    """  end of a story item (see starlab) """
+    """end of a story item (see starlab)"""
+
     typecharacter = "]"
     datatype = None
 
@@ -327,7 +346,7 @@ class NemoFile(object):
         file.write(dict(Time=1.0, Position=[[1, 2, 3]]))
     """
 
-    def __init__(self, filename, mode='r'):
+    def __init__(self, filename, mode="r"):
         """
         Create a NemoFile object for reading or writing, depending on mode.
         Arguments:
@@ -338,9 +357,9 @@ class NemoFile(object):
             'w' - write, overwrite the file if it already exists;
             'a' - write, append to the end of the file if it already exists.
         """
-        if mode not in ('r','x','w','a'):
+        if mode not in ("r", "x", "w", "a"):
             raise RuntimeError("mode should be one of the following: 'r', 'x', 'w', 'a'")
-        self.file = _builtins_open(filename, mode+'b')
+        self.file = _builtins_open(filename, mode + "b")
         self.filename = filename
 
     def __enter__(self):
@@ -356,12 +375,12 @@ class NemoFile(object):
         return self
 
     SingMagic = 0x0992
-    PlurMagic = 0x0b92
+    PlurMagic = 0x0B92
     reversed_SingMagic = 0x9209
-    reversed_PlurMagic = 0x920b
+    reversed_PlurMagic = 0x920B
 
-    def _byteswap(self, value, type='H'):
-        x = array.array('H', [value])
+    def _byteswap(self, value, type="H"):
+        x = array.array("H", [value])
         x.byteswap()
         return x[0]
 
@@ -370,7 +389,7 @@ class NemoFile(object):
         bytes = self.file.read(nbytes)
         if not bytes or len(bytes) < nbytes:
             return None
-        return array.array('h', bytes)[0]
+        return array.array("h", bytes)[0]
 
     def read_array(self, typetag):
         result = array.array(typetag)
@@ -388,19 +407,24 @@ class NemoFile(object):
 
     def read_string(self):
         if sys.version_info.major == 2:
-            return self.read_array('b').tostring()
+            return self.read_array("b").tostring()
         else:
-            return self.read_array('b').tobytes().decode('latin_1')
+            return self.read_array("b").tobytes().decode("latin_1")
 
     def read_fixed_array(self, datatype, count):
         bytes = self.file.read(int(datatype.itemsize * count))
         if sys.version_info.major == 2:
-            return numpy.fromstring(bytes, dtype=datatype,)
+            return numpy.fromstring(
+                bytes,
+                dtype=datatype,
+            )
         else:
-            return numpy.frombuffer(bytes, dtype=datatype,)
+            return numpy.frombuffer(
+                bytes,
+                dtype=datatype,
+            )
 
     def get_item_header(self):
-
         magic_number = self.read_magic_number()
         if magic_number is None:
             return (None, None, None, None)
@@ -419,9 +443,9 @@ class NemoFile(object):
         if not typecharacter == TesItem.typecharacter:
             tagstring = self.read_string()
         else:
-            tagstring = ''
+            tagstring = ""
         if magic_number == self.PlurMagic:
-            dim = self.read_array('i')
+            dim = self.read_array("i")
             if mustswap:
                 dim.byteswap()
             dim = dim.tolist()
@@ -438,14 +462,13 @@ class NemoFile(object):
         result.read(self)
         return result
 
-
     def write_magic_number(self, is_plural):
         if is_plural:
             magic_number = self.PlurMagic
         else:
             magic_number = self.SingMagic
 
-        x = array.array('h', [magic_number])
+        x = array.array("h", [magic_number])
         self.file.write(x.tostring() if sys.version_info.major == 2 else x.tobytes())
 
     def write_array(self, typetag, data):
@@ -454,7 +477,7 @@ class NemoFile(object):
         self.file.write(x.tostring() if sys.version_info.major == 2 else x.tobytes())
 
     def write_string(self, string):
-        return self.write_array('b', string if sys.version_info.major == 2 else string.encode('latin_1'))
+        return self.write_array("b", string if sys.version_info.major == 2 else string.encode("latin_1"))
 
     def write_item_header(self, item):
         self.write_magic_number(item.is_plural())
@@ -462,7 +485,7 @@ class NemoFile(object):
         if not item.typecharacter == TesItem.typecharacter:
             self.write_string(item.tagstring)
         if item.is_plural():
-            self.write_array('i', item.dimensions)
+            self.write_array("i", item.dimensions)
 
     def write_item(self, item):
         self.write_item_header(item)
@@ -486,22 +509,22 @@ class NemoFile(object):
             item = self.read_item()
             if item is None:
                 return
-            if item.tagstring != 'SnapShot':
+            if item.tagstring != "SnapShot":
                 continue
             result = {}
-            if 'Parameters' in item.data:
-                if 'Time' in item.data['Parameters'][0].data:
-                    result['Time'] = item.data['Parameters'][0].data['Time'][0].data[0]
-            if 'Particles' in item.data:
-                for par in item.data['Particles'][0].data.keys():
-                    if par == 'CoordSystem':
+            if "Parameters" in item.data:
+                if "Time" in item.data["Parameters"][0].data:
+                    result["Time"] = item.data["Parameters"][0].data["Time"][0].data[0]
+            if "Particles" in item.data:
+                for par in item.data["Particles"][0].data.keys():
+                    if par == "CoordSystem":
                         continue  # skip
-                    elif par == 'PhaseSpace':
-                        posvel = item.data['Particles'][0].data[par][0].data
-                        result['Position'] = posvel[:,0]
-                        result['Velocity'] = posvel[:,1]
+                    elif par == "PhaseSpace":
+                        posvel = item.data["Particles"][0].data[par][0].data
+                        result["Position"] = posvel[:, 0]
+                        result["Velocity"] = posvel[:, 1]
                     else:
-                        result[par] = item.data['Particles'][0].data[par][0].data
+                        result[par] = item.data["Particles"][0].data[par][0].data
             return result
 
     def __next__(self):
@@ -523,38 +546,47 @@ class NemoFile(object):
           Mass  (1d array of length N)
         """
         if not isinstance(snapshot, dict):
-            raise ValueError('Argument must be a dictionary')
-        item = SetItem('SnapShot')
-        parameters_item = SetItem('Parameters')
-        particles_item = SetItem('Particles')
+            raise ValueError("Argument must be a dictionary")
+        item = SetItem("SnapShot")
+        parameters_item = SetItem("Parameters")
+        particles_item = SetItem("Particles")
         nbody = None
         for key in snapshot:
-            if key == 'Time':
-                parameters_item.add_item(DoubleItem('Time', data=float(snapshot['Time'])))
+            if key == "Time":
+                parameters_item.add_item(DoubleItem("Time", data=float(snapshot["Time"])))
             else:
                 arr = numpy.asanyarray(snapshot[key])
-                if   arr.dtype == numpy.int8   : Item = ByteItem
-                elif arr.dtype == numpy.int16  : Item = ShortItem
-                elif arr.dtype == numpy.int32  : Item = IntItem
-                elif arr.dtype == numpy.int64  : Item = LongItem
-                elif arr.dtype == numpy.float16: Item = HalfpItem
-                elif arr.dtype == numpy.float32: Item = FloatItem
-                elif arr.dtype == numpy.float64: Item = DoubleItem
+                if arr.dtype == numpy.int8:
+                    Item = ByteItem
+                elif arr.dtype == numpy.int16:
+                    Item = ShortItem
+                elif arr.dtype == numpy.int32:
+                    Item = IntItem
+                elif arr.dtype == numpy.int64:
+                    Item = LongItem
+                elif arr.dtype == numpy.float16:
+                    Item = HalfpItem
+                elif arr.dtype == numpy.float32:
+                    Item = FloatItem
+                elif arr.dtype == numpy.float64:
+                    Item = DoubleItem
                 else:
-                    raise TypeError('Invalid dtype: %s' % arr.dtype)
+                    raise TypeError("Invalid dtype: %s" % arr.dtype)
                 particles_item.add_item(Item(key, dimensions=arr.shape, data=arr))
                 if nbody is None:
                     nbody = len(arr)
                 elif nbody != len(arr):
-                    raise ValueError('Array lengths should be identical')
-        parameters_item.add_item(IntItem('Nobj', data=nbody))
+                    raise ValueError("Array lengths should be identical")
+        parameters_item.add_item(IntItem("Nobj", data=nbody))
         item.add_item(parameters_item)
         item.add_item(particles_item)
         self.write_item(item)
         self.file.flush()
 
+
 # convenience alias
-def open(filename, mode='r'):
+def open(filename, mode="r"):
     return NemoFile(filename, mode)
+
 
 open.__doc__ = NemoFile.__init__.__doc__
